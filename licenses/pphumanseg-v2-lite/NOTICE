@@ -1,0 +1,13 @@
+PP-HumanSeg v2 (lite, 192x192), from PaddleSeg
+File: pp_humansegv2_lite_192x192.onnx
+Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+Licensed under the Apache License, Version 2.0.
+Upstream: https://github.com/PaddlePaddle/PaddleSeg/tree/release/2.9/contrib/PP-HumanSeg
+Original file: human_pp_humansegv2_lite_192x192_inference_model_with_softmax.zip
+  https://paddleseg.bj.bcebos.com/dygraph/pp_humanseg_v2/human_pp_humansegv2_lite_192x192_inference_model_with_softmax.zip
+
+Modified file (Apache License 2.0, section 4(b)): this file was converted
+from a Paddle inference model to ONNX by the omarchy-onnx-models project
+(the input shape fixed at 1x3x192x192, then paddle2onnx, asked for opset
+13, which exports at opset 14, the opset its hard_swish operator needs).
+The weights are unchanged.

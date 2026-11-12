@@ -1,0 +1,58 @@
+# This repository holds the recipe only. The model files are built into
+# dist/ and published as release assets; no model, weight, archive or build
+# output is ever committed. scripts/check-no-models.sh (the pre-commit hook)
+# enforces the same rules.
+
+# Build output: the release files, the work directories, the run log, the
+# environments.
+/dist/
+/build/
+.venv/
+venv/
+venvs/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+*.log
+
+# Models and weights, in any framework's format.
+*.onnx
+*.ort
+*.tflite
+*.lite
+*.pb
+*.pbtxt
+*.pdmodel
+*.pdiparams
+*.pdparams
+*.pdopt
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.h5
+*.keras
+*.npy
+*.npz
+*.pkl
+*.bin
+*.engine
+*.trt
+*.plan
+*.mlmodel
+*.mlpackage/
+*.xml.bin
+
+# Archives and documents as the upstream projects ship them.
+*.zip
+*.tar
+*.tar.*
+*.tgz
+*.gz
+*.xz
+*.zst
+*.bz2
+*.7z
+*.whl
+*.pdf

@@ -1,0 +1,7 @@
+MODNet: Trimap-Free Portrait Matting in Real Time (photographic)
+File: modnet_photographic.onnx
+Copyright The MODNet authors (Zhanghan Ke et al.).
+Licensed under the Apache License, Version 2.0.
+Upstream: https://github.com/ZHKKKe/MODNet
+This file is the upstream ONNX export of the image matting model,
+redistributed unmodified.

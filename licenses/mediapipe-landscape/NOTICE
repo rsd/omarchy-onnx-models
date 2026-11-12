@@ -1,0 +1,12 @@
+MediaPipe Selfie Segmentation (landscape)
+File: selfie_segmentation_landscape.onnx
+Copyright The MediaPipe Authors.
+Licensed under the Apache License, Version 2.0.
+Upstream: https://github.com/google-ai-edge/mediapipe
+Original file: selfie_segmentation_landscape.tflite
+  https://storage.googleapis.com/mediapipe-assets/selfie_segmentation_landscape.tflite
+
+Modified file (Apache License 2.0, section 4(b)): this file was converted
+from TensorFlow Lite to ONNX by the omarchy-onnx-models project (tf2onnx,
+then a standard ONNX ConvTranspose in place of the TensorFlow Lite custom
+operator Convolution2DTransposeBias). The weights are unchanged.

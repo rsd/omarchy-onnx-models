@@ -1,0 +1,185 @@
+# The model table: the single source of truth for scripts/build-models.sh,
+# the manifest it writes (dist/MANIFEST.toml) and the tests.
+#
+# Per model:
+#   id              short identifier; also the directory under licenses/
+#   file            the release file name (consumers download it by this name)
+#   size            the expected size of the release file, in bytes
+#   sha256          the expected SHA-256 of the release file
+#   kind            the pipeline that makes it: tflite, paddle or copy
+#   input_file      the upstream file name, as downloaded
+#   input_urls      the upstream locations, tried in order (first = primary)
+#   input_sha256    the SHA-256 of the upstream file; checked before any use
+#   paddle_model_dir  (paddle) the directory inside the upstream archive
+#   tf2onnx_opset   (tflite) the ONNX opset tf2onnx converts to
+#   opset           the opset of the default ONNX domain (ai.onnx) the
+#                   release file declares; convert/verify_model.py checks it
+#   reproducible    optional, true by default: the conversion gives the same
+#                   bytes on every run, and the build checks the result's
+#                   sha256 against the table. false: it does not (the bytes
+#                   change between runs, the content does not), and the
+#                   build ships a supplied reference file whose sha256 is the
+#                   table's, after proving a fresh conversion equivalent to
+#                   it (scripts/lib/equivalence.py; docs/release.md)
+#   equivalence_tolerance  (reproducible = false) the largest absolute
+#                   difference allowed between the outputs of the reference
+#                   and of the fresh conversion on the probe inputs
+#   licence         SPDX identifier of the model's licence
+#   licence_url     the upstream licence (evidence)
+#   project_url     the upstream project
+#   model_card_url  the model card or the page that describes the model
+#   training_data   what is known about the training data's terms
+#   conversion      a one-line summary of how the file is made
+#   preprocessing   what the model expects as input
+#   [models.input]  name; shape, as the file declares it (a string is a
+#                   dynamic dimension); value_range, the range of the
+#                   preprocessed values; smoke_shape, the shape of the smoke
+#                   inference, when shape has a dynamic dimension
+#   [models.output] name; shape, as declared; smoke_shape, the shape the
+#                   smoke inference must produce, when shape has a dynamic
+#                   dimension; range, what the values mean
+
+schema = 1
+
+[[models]]
+id = "mediapipe-landscape"
+file = "selfie_segmentation_landscape.onnx"
+size = 449893
+sha256 = "fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d"
+kind = "tflite"
+# The reference file declares opset 17; HardSwish needs opset 14 or newer.
+tf2onnx_opset = 17
+opset = 17
+# tf2onnx 1.17.0 names its folded constants differently on every run (and
+# sometimes adds one Reshape to the same shape), so no two runs give the same
+# bytes. The release file is the reference conversion below; each build
+# checks a fresh conversion against it. The outputs are in [0, 1]; 1e-6 is
+# about 8 float32 steps at 1.0: room for a different summation order, far
+# below any change of a weight or an operator.
+reproducible = false
+equivalence_tolerance = 1e-6
+input_file = "selfie_segmentation_landscape.tflite"
+input_urls = [
+    "https://storage.googleapis.com/mediapipe-assets/selfie_segmentation_landscape.tflite",
+]
+input_sha256 = "a77d03f4659b9f6b6c1f5106947bf40e99d7655094b6527f214ea7d451106edd"
+licence = "Apache-2.0"
+licence_url = "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE"
+project_url = "https://github.com/google-ai-edge/mediapipe"
+model_card_url = "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf"
+training_data = "Described in the model card (Google's own data set); no further terms stated."
+conversion = "tf2onnx --tflite at opset 17, then convert/fix_tconv.py replaces the TFLite custom operator Convolution2DTransposeBias with standard ONNX Transpose + ConvTranspose (stride 2) + Transpose; the weights are unchanged."
+preprocessing = "RGB, values in [0, 1], NHWC, resized to 144x256 (height x width)."
+
+[models.input]
+name = "input_1"
+shape = [1, 144, 256, 3]
+value_range = [0.0, 1.0]
+
+[models.output]
+name = "segment_back"
+shape = [1, 144, 256, 1]
+range = "[0, 1]: the person's alpha"
+
+[[models]]
+id = "pphumanseg-v2-mobile"
+file = "pp_humansegv2_mobile_192x192.onnx"
+size = 30166201
+sha256 = "2bca11ec1f2a662146147d97523d613f5ef4ebf2a89803a95a0cbabfe2bd70a9"
+kind = "paddle"
+input_file = "human_pp_humansegv2_mobile_192x192_inference_model_with_softmax.zip"
+input_urls = [
+    "https://paddleseg.bj.bcebos.com/dygraph/pp_humanseg_v2/human_pp_humansegv2_mobile_192x192_inference_model_with_softmax.zip",
+]
+input_sha256 = "4e1ef6f06bbf6b054bc33664a0a71df622ee397a0f3e78a22ef7f96cf82a771b"
+paddle_model_dir = "human_pp_humansegv2_mobile_192x192_inference_model_with_softmax"
+opset = 13
+licence = "Apache-2.0"
+licence_url = "https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.9/LICENSE"
+project_url = "https://github.com/PaddlePaddle/PaddleSeg/tree/release/2.9/contrib/PP-HumanSeg"
+model_card_url = "https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.9/contrib/PP-HumanSeg/README.md"
+training_data = "UNCONFIRMED: trained on PP-HumanSeg14K among other data; PP-HumanSeg14K is available only on request from Baidu (paddleseg@baidu.com), with no licence stated publicly."
+conversion = "convert/pp_static.py re-saves the Paddle inference model with the input shape fixed at 1x3x192x192, then paddle2onnx at opset 13; convert/pp_fix_pool.py resolves an adaptive AveragePool (kernel -1) when paddle2onnx leaves one; the weights are unchanged."
+preprocessing = "RGB, (v / 255 - 0.5) / 0.5 (values in [-1, 1]), NCHW, squashed to 192x192 (the aspect ratio is not kept)."
+
+[models.input]
+name = "x"
+shape = [1, 3, 192, 192]
+value_range = [-1.0, 1.0]
+
+[models.output]
+name = "save_infer_model/scale_0.tmp_0"
+shape = [1, 2, "height", "width"]
+smoke_shape = [1, 2, 192, 192]
+range = "[0, 1]: softmax over background (channel 0) and person (channel 1); the matte is channel 1"
+
+[[models]]
+id = "pphumanseg-v2-lite"
+file = "pp_humansegv2_lite_192x192.onnx"
+size = 12205830
+sha256 = "ca96b4436f1ce6a76059e8902e20a9617f6829fb11f6c6c9e876563e6352e6b4"
+kind = "paddle"
+input_file = "human_pp_humansegv2_lite_192x192_inference_model_with_softmax.zip"
+input_urls = [
+    "https://paddleseg.bj.bcebos.com/dygraph/pp_humanseg_v2/human_pp_humansegv2_lite_192x192_inference_model_with_softmax.zip",
+]
+input_sha256 = "9d86bc9c86c282cc2e92eaa089b96e18d30776c6ca745be18e6251a4e2a00110"
+paddle_model_dir = "human_pp_humansegv2_lite_192x192_inference_model_with_softmax"
+# paddle2onnx is asked for opset 13 (as for mobile) and raises it to 14 itself:
+# the hard_swish operator of this model needs it.
+opset = 14
+licence = "Apache-2.0"
+licence_url = "https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.9/LICENSE"
+project_url = "https://github.com/PaddlePaddle/PaddleSeg/tree/release/2.9/contrib/PP-HumanSeg"
+model_card_url = "https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.9/contrib/PP-HumanSeg/README.md"
+training_data = "UNCONFIRMED: trained on PP-HumanSeg14K among other data; PP-HumanSeg14K is available only on request from Baidu (paddleseg@baidu.com), with no licence stated publicly."
+conversion = "convert/pp_static.py re-saves the Paddle inference model with the input shape fixed at 1x3x192x192, then paddle2onnx, asked for opset 13, exports at opset 14 (its hard_swish operator needs it); convert/pp_fix_pool.py resolves an adaptive AveragePool (kernel -1) when paddle2onnx leaves one; the weights are unchanged."
+preprocessing = "RGB, (v / 255 - 0.5) / 0.5 (values in [-1, 1]), NCHW, squashed to 192x192 (the aspect ratio is not kept)."
+
+[models.input]
+name = "x"
+shape = [1, 3, 192, 192]
+value_range = [-1.0, 1.0]
+
+[models.output]
+name = "save_infer_model/scale_0.tmp_0"
+shape = [1, 2, "height", "width"]
+smoke_shape = [1, 2, 192, 192]
+range = "[0, 1]: softmax over background (channel 0) and person (channel 1); the matte is channel 1"
+
+[[models]]
+id = "modnet"
+file = "modnet_photographic.onnx"
+size = 25888640
+sha256 = "07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9"
+kind = "copy"
+# The upstream export declares opset 11.
+opset = 11
+input_file = "modnet.onnx"
+# Primary: the official ONNX export linked from the MODNet repository
+# (onnx/README.md, Google Drive file 1cgycTQlYXpTh26gB9FTnthE7AvruV8hd).
+# Mirror: the byte-identical Hugging Face copy, pinned to a commit.
+input_urls = [
+    "https://drive.usercontent.google.com/download?id=1cgycTQlYXpTh26gB9FTnthE7AvruV8hd&export=download&confirm=t",
+    "https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model.onnx",
+]
+input_sha256 = "07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9"
+licence = "Apache-2.0"
+licence_url = "https://github.com/ZHKKKe/MODNet#license"
+project_url = "https://github.com/ZHKKKe/MODNet"
+model_card_url = "https://github.com/ZHKKKe/MODNet/blob/master/onnx/README.md"
+training_data = "UNCONFIRMED: not named in the repository's README (the paper describes it); its terms are not confirmed."
+conversion = "None: the upstream ONNX export (Image Matting Model, photographic), unmodified."
+preprocessing = "RGB, values in [-1, 1], NCHW; scale so the short side is 288 and round both sides to a multiple of 32 (288x512 for 16:9)."
+
+[models.input]
+name = "input"
+shape = ["batch_size", 3, "height", "width"]
+value_range = [-1.0, 1.0]
+smoke_shape = [1, 3, 288, 512]
+
+[models.output]
+name = "output"
+shape = ["batch_size", 1, "height", "width"]
+smoke_shape = [1, 1, 288, 512]
+range = "[0, 1]: the alpha matte"

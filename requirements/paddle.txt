@@ -1,0 +1,23 @@
+# The PP-HumanSeg conversion (Python 3.10; paddlepaddle 2.6 has no wheel for
+# newer Pythons): paddlepaddle, paddle2onnx and their full dependency set,
+# pinned exactly. These versions produced the release checksums in models.toml.
+anyio==4.16.0
+astor==0.8.1
+certifi==2026.10.23
+decorator==5.3.1
+exceptiongroup==1.3.1
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+ml-dtypes==0.6.0
+numpy==2.2.6
+onnx==1.23.2
+opt-einsum==3.3.0
+paddle2onnx==1.3.1
+paddlepaddle==2.6.2
+pillow==12.3.0
+protobuf==7.36.2
+setuptools==84.2.1
+six==1.17.0
+typing-extensions==4.16.0
