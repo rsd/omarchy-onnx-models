@@ -131,6 +131,30 @@ Once the release is published, bring `packaging/arch/PKGBUILD` to its tag. The p
 4. Run `scripts/test.sh`. Its PKGBUILD test checks the sums against `models.toml` and the licence and notice sums against the tag, which must be present locally (section 2 creates it). Without the tag the test checks them against the working tree and says so.
 5. Build once with `makepkg` from `packaging/arch`. It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
 
+## 4. Publish to the AUR
+
+The AUR recipe is `packaging/arch/PKGBUILD` unchanged, with a generated `.SRCINFO` and a `LICENSE` (0BSD). It is pushed from `aur/omarchy-onnx-models`, a separate git repository that is ignored by this one. Publish after the GitHub release (section 2) and the PKGBUILD update (section 3), since the packages download the release's assets. The AUR branch is `master`.
+
+Once, to create the AUR repository (the first push creates the package):
+
+```bash
+git init -b master aur/omarchy-onnx-models
+git -C aur/omarchy-onnx-models remote add origin ssh://aur@aur.archlinux.org/omarchy-onnx-models.git
+```
+
+For every release:
+
+```bash
+scripts/srcinfo.sh --aur aur/omarchy-onnx-models     # writes PKGBUILD, .SRCINFO and LICENSE; commits nothing
+scripts/srcinfo.sh --check aur/omarchy-onnx-models   # optional: fails with a diff when they are stale
+cd aur/omarchy-onnx-models
+git add PKGBUILD .SRCINFO LICENSE
+git commit -m 'Initial release: 1.0.0-1'              # later: '1.1.0-1'
+git push -u origin master
+```
+
+`--aur` refuses a directory that is not the top of a git work tree and one that holds files other than `.git`, `PKGBUILD`, `.SRCINFO` and `LICENSE`. Optionally run `namcap PKGBUILD` and `namcap *.pkg.tar.zst` on a build made in a temporary copy first.
+
 ## Download URLs
 
 Each asset is at:

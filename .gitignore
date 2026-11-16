@@ -56,3 +56,6 @@ __pycache__/
 *.7z
 *.whl
 *.pdf
+
+# The AUR repository checkout (a separate git repository, pushed by hand).
+/aur/

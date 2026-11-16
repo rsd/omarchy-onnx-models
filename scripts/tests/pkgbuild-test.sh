@@ -102,7 +102,7 @@ check_pkgbuild() {
     local i
     for i in "${!ids[@]}"; do
         id=${ids[i]}
-        want_src+=("$rel/${want_files[i]}" "$id-LICENSE::$tree/$id/LICENSE" "$id-NOTICE::$tree/$id/NOTICE")
+        want_src+=("$id-${f[pkgver]}-${want_files[i]}::$rel/${want_files[i]}" "$id-${f[pkgver]}-LICENSE::$tree/$id/LICENSE" "$id-${f[pkgver]}-NOTICE::$tree/$id/NOTICE")
         want_sum_list+=("${want_sums[i]}" "$(lic_sha "${f[pkgver]}" "$id" LICENSE)" "$(lic_sha "${f[pkgver]}" "$id" NOTICE)")
     done
     [[ ${src[*]} == "${want_src[*]}" ]] || echo "source: '${src[*]}', want '${want_src[*]}'"
@@ -120,7 +120,7 @@ check_pkgbuild() {
     grep -qF '/usr/share/omarchy-onnx-models/' "$pkgbuild" || echo "the install directory /usr/share/omarchy-onnx-models/ is not named"
     grep -qF '/usr/share/licenses/$pkgname/LICENSE' "$pkgbuild" || echo "the licence is not installed into /usr/share/licenses/\$pkgname/"
     grep -qF '/usr/share/licenses/$pkgname/NOTICE' "$pkgbuild" || echo "the notice is not installed into /usr/share/licenses/\$pkgname/"
-    grep -qF 'install -Dm644 "$srcdir/${_files[i]}"' "$pkgbuild" || echo "the model file is not installed with mode 644"
+    grep -qF 'install -Dm644 "$srcdir/$1-$pkgver-${_files[i]}"' "$pkgbuild" || echo "the model file is not installed with mode 644"
     grep -qE '^        return 1$' "$pkgbuild" || echo "_install_model does not fail (return 1) on an unknown model id"
     return 0
 }
@@ -191,7 +191,7 @@ if [[ -f $pkgbuild ]]; then
         '0,/^    pkgdesc=.*$/s///' \
         "pkgdesc lines"
     expect_bad "a model file installed with another mode" \
-        's/install -Dm644 "\$srcdir\/\$\{_files\[i\]\}"/install -Dm755 "$srcdir\/${_files[i]}"/' \
+        's/install -Dm644 "\$srcdir\/\$1-\$pkgver-\$\{_files\[i\]\}"/install -Dm755 "$srcdir\/$1-$pkgver-${_files[i]}"/' \
         "mode 644"
     expect_bad "_install_model that no longer fails on an unknown id" \
         '/^        return 1$/d' \
@@ -206,6 +206,65 @@ if [[ -f $pkgbuild ]]; then
         ok "a PKGBUILD that does not source"
     else
         fail "a PKGBUILD that does not source"
+    fi
+fi
+
+echo "== scripts/srcinfo.sh"
+if ! command -v makepkg >/dev/null 2>&1; then
+    echo "note: makepkg not found; the .SRCINFO checks are skipped"
+else
+    info=$("$top/scripts/srcinfo.sh" 2>&1) || info="srcinfo.sh failed: $info"
+    if grep -qx 'pkgbase = omarchy-onnx-models' <<<"$info" &&
+        [[ $(grep -c '^pkgname = omarchy-onnx-model-' <<<"$info") -eq 4 ]]; then
+        ok "srcinfo.sh prints the .SRCINFO of the four packages"
+    else
+        fail "srcinfo.sh does not print the expected .SRCINFO: $info"
+    fi
+    mkdir "$tmp/not-git"
+    if "$top/scripts/srcinfo.sh" --aur "$tmp/not-git" >/dev/null 2>&1; then
+        fail "srcinfo.sh --aur accepted a directory that is not a git work tree"
+    else
+        ok "srcinfo.sh --aur refuses a directory that is not a git work tree"
+    fi
+    git init -q "$tmp/aur-dir"
+    if "$top/scripts/srcinfo.sh" --aur "$tmp/aur-dir" >/dev/null 2>&1 &&
+        [[ -f $tmp/aur-dir/PKGBUILD && -f $tmp/aur-dir/.SRCINFO && -f $tmp/aur-dir/LICENSE ]] &&
+        cmp -s "$pkgbuild" "$tmp/aur-dir/PKGBUILD" &&
+        grep -qx 'Permission to use, copy, modify, and/or distribute this software for any' "$tmp/aur-dir/LICENSE" &&
+        [[ -z $(git -C "$tmp/aur-dir" status --porcelain --untracked-files=no) ]] &&
+        [[ -z $(git -C "$tmp/aur-dir" diff --cached --name-only) ]]; then
+        ok "srcinfo.sh --aur copies PKGBUILD, .SRCINFO and LICENSE and stages nothing"
+    else
+        fail "srcinfo.sh --aur did not copy the three files, or touched the index"
+    fi
+    if "$top/scripts/srcinfo.sh" --check "$tmp/aur-dir" >/dev/null 2>&1; then
+        ok "srcinfo.sh --check accepts what --aur wrote"
+    else
+        fail "srcinfo.sh --check refused what --aur wrote"
+    fi
+    echo '# stale' >>"$tmp/aur-dir/PKGBUILD"
+    rc=0
+    out=$("$top/scripts/srcinfo.sh" --check "$tmp/aur-dir" 2>&1) || rc=$?
+    if ((rc == 1)) && grep -q -- '^-# stale' <<<"$out"; then
+        ok "srcinfo.sh --check fails with a diff on a stale PKGBUILD"
+    else
+        fail "srcinfo.sh --check on a stale PKGBUILD (rc $rc): $out"
+    fi
+    cp -- "$pkgbuild" "$tmp/aur-dir/PKGBUILD"
+    echo tampered >"$tmp/aur-dir/LICENSE"
+    if "$top/scripts/srcinfo.sh" --check "$tmp/aur-dir" >/dev/null 2>&1; then
+        fail "srcinfo.sh --check accepted a changed LICENSE"
+    else
+        ok "srcinfo.sh --check refuses a changed LICENSE"
+    fi
+    "$top/scripts/srcinfo.sh" --aur "$tmp/aur-dir" >/dev/null 2>&1
+    touch "$tmp/aur-dir/stray"
+    if "$top/scripts/srcinfo.sh" --aur "$tmp/aur-dir" >/dev/null 2>&1; then
+        fail "srcinfo.sh --aur accepted a stray file"
+    elif "$top/scripts/srcinfo.sh" --check "$tmp/aur-dir" >/dev/null 2>&1; then
+        fail "srcinfo.sh --check accepted a stray file"
+    else
+        ok "srcinfo.sh --aur and --check refuse a stray file"
     fi
 fi
 

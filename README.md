@@ -46,7 +46,7 @@ A full build downloads about 70 MB of originals and, through uv, about 1 GB of P
 | `omarchy-onnx-model-pphumanseg-v2-lite` | `pp_humansegv2_lite_192x192.onnx` |
 | `omarchy-onnx-model-modnet` | `modnet_photographic.onnx` |
 
-Each package also installs the licence (`LICENSE`) and the notice (`NOTICE`) of its model into `/usr/share/licenses/<package>/`. The sources are the release's model files and the licence and notice files of the release tag, each pinned by SHA-256; nothing is taken from a checkout. The packages are architecture independent (`arch=('any')`). They are not on the AUR.
+Each package also installs the licence (`LICENSE`) and the notice (`NOTICE`) of its model into `/usr/share/licenses/<package>/`. The sources are the release's model files and the licence and notice files of the release tag, each pinned by SHA-256; nothing is taken from a checkout. The packages are architecture independent (`arch=('any')`). The AUR recipe is prepared from this one by [`scripts/srcinfo.sh`](scripts/srcinfo.sh) (see [docs/release.md](docs/release.md)).
 
 Build from a clone of this repository, then install the packages you want:
 

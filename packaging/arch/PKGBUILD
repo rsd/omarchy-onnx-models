@@ -1,7 +1,7 @@
-# Maintainer: Raul Dias
+# Maintainer: Raul Dias <raul@dias.com.br>
 #
-# Arch packages of the four ONNX person-segmentation models of this
-# repository, one package per model, from one split PKGBUILD:
+# Four ONNX person-segmentation models, one package per model, from one split
+# PKGBUILD:
 #
 #   omarchy-onnx-model-mediapipe-landscape
 #   omarchy-onnx-model-pphumanseg-v2-mobile
@@ -10,29 +10,27 @@
 #
 # Each package installs its model file into the shared directory
 #   /usr/share/omarchy-onnx-models/
-# which belongs to no one program: any program may search it (omarchy-broadcast's
+# which belongs to no one program: any program may read it (omarchy-broadcast's
 # ONNX cut-out module does), and the packages can be installed in any
 # combination. Each package also installs the Apache-2.0 text and the NOTICE
 # of its model (the attribution and, for a converted file, the modification
 # notice of section 4(b)) into /usr/share/licenses/<package>/.
 #
-# Nothing is built here and nothing is taken from a checkout: the sources are
-# the files of the published release (the model files, by URL, as the release
-# lists them in its SHA256SUMS) and the licence and notice files of the release
-# tag, by URL. The packages are architecture independent.
+# Nothing is compiled here. The sources are the model files of the published
+# release v$pkgver of https://github.com/rsd/omarchy-onnx-models (converted
+# there from the upstream weights by a pinned recipe; the release lists their
+# SHA-256 in its SHA256SUMS) and the licence and notice files of the same tag.
+# Each is saved under a name that carries pkgver, so a shared SRCDEST never
+# serves a stale file after a bump. The packages are architecture independent.
 #
-# Build (from packaging/arch):   makepkg
-# Install the result with:       sudo pacman -U omarchy-onnx-model-*.pkg.tar.zst
-# (or only the packages wanted, e.g. omarchy-onnx-model-modnet-*.pkg.tar.zst)
-#
-# pkgver is the release tag without its "v": 1.0.0 builds from the tag v1.0.0.
+# pkgver is the release tag without its "v": 1.0.0 comes from the tag v1.0.0.
 # A new release changes pkgver, the checksums of the model files (_sha256) and
 # the checksums of the licence and notice files (_license_sha256 and
-# _notice_sha256). The model data below is kept in step with models.toml
-# (same ids, in the same order, same files, same SHA-256), and with the
-# licenses/ directory; scripts/tests/pkgbuild-test.sh fails when it is not.
+# _notice_sha256). The model data below is kept in step with models.toml of the
+# upstream repository, which tests it (scripts/tests/pkgbuild-test.sh).
 
 pkgbase=omarchy-onnx-models
+pkgdesc='ONNX person-segmentation models (MediaPipe, PP-HumanSeg, MODNet), one package per model'
 pkgname=(
     omarchy-onnx-model-mediapipe-landscape
     omarchy-onnx-model-pphumanseg-v2-mobile
@@ -86,9 +84,9 @@ source=()
 sha256sums=()
 for _i in "${!_ids[@]}"; do
     source+=(
-        "$_release/${_files[_i]}"
-        "${_ids[_i]}-LICENSE::$_tree/${_ids[_i]}/LICENSE"
-        "${_ids[_i]}-NOTICE::$_tree/${_ids[_i]}/NOTICE"
+        "${_ids[_i]}-$pkgver-${_files[_i]}::$_release/${_files[_i]}"
+        "${_ids[_i]}-$pkgver-LICENSE::$_tree/${_ids[_i]}/LICENSE"
+        "${_ids[_i]}-$pkgver-NOTICE::$_tree/${_ids[_i]}/NOTICE"
     )
     sha256sums+=(
         "${_sha256[_i]}"
@@ -111,9 +109,9 @@ _install_model() {
         echo "_install_model: unknown model id '$1'" >&2
         return 1
     fi
-    install -Dm644 "$srcdir/${_files[i]}" "$pkgdir/usr/share/omarchy-onnx-models/${_files[i]}"
-    install -Dm644 "$srcdir/$1-LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    install -Dm644 "$srcdir/$1-NOTICE" "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
+    install -Dm644 "$srcdir/$1-$pkgver-${_files[i]}" "$pkgdir/usr/share/omarchy-onnx-models/${_files[i]}"
+    install -Dm644 "$srcdir/$1-$pkgver-LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "$srcdir/$1-$pkgver-NOTICE" "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
 }
 
 package_omarchy-onnx-model-mediapipe-landscape() {
