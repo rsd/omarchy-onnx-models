@@ -1,0 +1,10 @@
+# makepkg output and work directories
+/src/
+/pkg/
+*.pkg.tar.*
+# makepkg downloads (the model files are also ignored at the top level)
+/*.onnx
+/*-LICENSE
+/*-NOTICE
+.SRCINFO
+*.log

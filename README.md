@@ -1,6 +1,6 @@
 # omarchy-onnx-models
 
-ONNX files of four open person-segmentation models, built from the upstream releases by a pinned recipe and published as GitHub release assets with checksums. Packages and programs download them by URL and check them against `SHA256SUMS`; the PKGBUILD of omarchy-broadcast's ONNX cut-out module is one such consumer.
+ONNX files of four open person-segmentation models, built from the upstream releases by a pinned recipe and published as GitHub release assets with checksums. Packages and programs download them by URL and check them against `SHA256SUMS`. The Arch packages of this repository ([packaging/arch/](packaging/arch/)) are one such consumer; omarchy-broadcast's ONNX cut-out module depends on one of them (its default model) and searches the directory they install into.
 
 This repository holds the recipe only: the model table, the conversion scripts, the licences and notices, the documentation and the tests. The model files themselves are never committed; they are built into `dist/` and uploaded to a release by hand (see [docs/release.md](docs/release.md)).
 
@@ -35,6 +35,29 @@ scripts/test.sh                                 # the offline checks of this rep
 
 A full build downloads about 70 MB of originals and, through uv, about 1 GB of Python packages (TensorFlow and PaddlePaddle) unless they are in uv's cache.
 
+## Arch packages
+
+[`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) is one split recipe for four Arch packages, one per model. Each package downloads its model file from the release and installs it into `/usr/share/omarchy-onnx-models/`. That directory belongs to no one program: any program may read the models from it, and the packages can be installed in any combination.
+
+| Package | Installs |
+|---|---|
+| `omarchy-onnx-model-mediapipe-landscape` | `selfie_segmentation_landscape.onnx` |
+| `omarchy-onnx-model-pphumanseg-v2-mobile` | `pp_humansegv2_mobile_192x192.onnx` |
+| `omarchy-onnx-model-pphumanseg-v2-lite` | `pp_humansegv2_lite_192x192.onnx` |
+| `omarchy-onnx-model-modnet` | `modnet_photographic.onnx` |
+
+Each package also installs the licence (`LICENSE`) and the notice (`NOTICE`) of its model into `/usr/share/licenses/<package>/`. The sources are the release's model files and the licence and notice files of the release tag, each pinned by SHA-256; nothing is taken from a checkout. The packages are architecture independent (`arch=('any')`). They are not on the AUR.
+
+Build from a clone of this repository, then install the packages you want:
+
+```bash
+cd packaging/arch
+makepkg                                                # downloads and checks the sources
+sudo pacman -U omarchy-onnx-model-modnet-*.pkg.tar.zst  # one package, or several
+```
+
+`pkgver` is the release tag without its `v`, so `1.0.0` builds from `v1.0.0`. The downloads and the packages stay in `packaging/arch/`, which its `.gitignore` excludes from git. The packages follow each release: see step 3 of [docs/release.md](docs/release.md).
+
 ## Repository layout
 
 ```
@@ -45,6 +68,7 @@ requirements/                     the pinned environments: tflite.txt, paddle.tx
                                   and their hashed lock files <name>.lock
 convert/                          the conversion and verification programs (Python)
 licenses/<id>/                    LICENSE and NOTICE of each model
+packaging/arch/                   the Arch packages: one split PKGBUILD (see Arch packages)
 scripts/build-models.sh           the build: downloads, converts, verifies, writes dist/
 scripts/lock-requirements.sh      regenerates requirements/*.lock (docs/release.md)
 scripts/lib/                      the shell and Python functions the build and the tests share
@@ -61,7 +85,7 @@ docs/                             the models, the release procedure
 scripts/test.sh
 ```
 
-This runs without network and without the conversion environments: shellcheck over every shell script and hook, `bash -n`, the model table's consistency (every field, the checksums, the licence files, and the tables in this README and in `docs/models.md`), the checksum, manifest and download functions of the build against small fake files, the reference-file handling of the build (with a fake `uv` that stops it before any environment), whole builds with a fake `uv` and fake interpreters (the uv options, a checksum mismatch or a wrong `--input-dir` file leaving `dist/` untouched, the `--dist` marker, `--keep-venvs`), the lock files against `requirements/*.txt`, the equivalence check against fake summaries, the guard's own tests and the guard over the whole tree. It needs shellcheck: from `PATH`, from `SHELLCHECK=/path/to/shellcheck`, or, when `uvx` is installed, run as `uvx --from shellcheck-py shellcheck`.
+This runs without network and without the conversion environments: shellcheck over every shell script and hook, `bash -n`, the model table's consistency (every field, the checksums, the licence files, and the tables in this README and in `docs/models.md`), the Arch recipe against the model table and the licence files (`scripts/tests/pkgbuild-test.sh`: the ids, the file names, the SHA-256 of the model files, and the SHA-256 of the licence and notice files as they are at the tag of its `pkgver` when that tag is present locally), the checksum, manifest and download functions of the build against small fake files, the reference-file handling of the build (with a fake `uv` that stops it before any environment), whole builds with a fake `uv` and fake interpreters (the uv options, a checksum mismatch or a wrong `--input-dir` file leaving `dist/` untouched, the `--dist` marker, `--keep-venvs`), the lock files against `requirements/*.txt`, the equivalence check against fake summaries, the guard's own tests and the guard over the whole tree. It needs shellcheck: from `PATH`, from `SHELLCHECK=/path/to/shellcheck`, or, when `uvx` is installed, run as `uvx --from shellcheck-py shellcheck`.
 
 ## Keeping models out of the history
 

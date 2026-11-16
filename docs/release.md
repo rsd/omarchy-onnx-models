@@ -7,7 +7,7 @@ The model files are published as the assets of a GitHub release of this reposito
 - Tags are `v<MAJOR>.<MINOR>.<PATCH>`; the first release is `v1.0.0`.
 - **The assets of a published tag are never replaced.** Consumers pin each file's SHA-256, so a changed file under an existing URL breaks every one of them. Whenever any release file changes (a model, `NOTICE`, the licence text, `MANIFEST.toml`), publish a new tag.
 - `MAJOR`: a file is removed or renamed, or a model's inputs or outputs change. `MINOR`: a model is added. `PATCH`: anything else that changes a file's bytes (a re-conversion with other tool versions, a corrected notice or manifest).
-- The checksums in `models.toml`, `README.md` and `docs/models.md` describe the files of the latest release; `scripts/test.sh` checks that they agree with each other.
+- The checksums in `models.toml`, `README.md`, `docs/models.md` and `packaging/arch/PKGBUILD` describe the files of the latest release; `scripts/test.sh` checks that they agree with each other.
 
 ## 1. Build and check
 
@@ -111,6 +111,26 @@ gh release download "$tag" --repo <owner>/omarchy-onnx-models
 sha256sum -c SHA256SUMS
 ```
 
+## 3. Update the Arch packages
+
+Once the release is published, bring `packaging/arch/PKGBUILD` to its tag. The packages take the model files from the tag's release assets, and their licence and notice files from the tag's `licenses/` directory, so a change to `licenses/` reaches the packages only with a new release.
+
+1. Set `pkgver` to the tag without its `v` (`v1.1.0` gives `pkgver=1.1.0`), and `pkgrel` back to `1`.
+2. Copy the hash of each model file from the release's `SHA256SUMS` into `_sha256=()`, in the order of `_ids` (the order of `models.toml`).
+3. Set `_license_sha256=()` and `_notice_sha256=()` to the SHA-256 of `licenses/<id>/LICENSE` and `licenses/<id>/NOTICE` at the tag. `SHA256SUMS` does not list them, since it covers the files of `dist/` only:
+
+    ```bash
+    tag=v1.1.0
+    git fetch --tags
+    for id in mediapipe-landscape pphumanseg-v2-mobile pphumanseg-v2-lite modnet; do
+        git show "$tag:licenses/$id/LICENSE" | sha256sum
+        git show "$tag:licenses/$id/NOTICE" | sha256sum
+    done
+    ```
+
+4. Run `scripts/test.sh`. Its PKGBUILD test checks the sums against `models.toml` and the licence and notice sums against the tag, which must be present locally (section 2 creates it). Without the tag the test checks them against the working tree and says so.
+5. Build once with `makepkg` from `packaging/arch`. It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
+
 ## Download URLs
 
 Each asset is at:
@@ -123,32 +143,4 @@ for example `https://github.com/<owner>/omarchy-onnx-models/releases/download/v1
 
 ## Consuming the files from a PKGBUILD
 
-List each file in `source=()` and its SHA-256, from the release's `SHA256SUMS`, in `sha256sums=()`, in the same order. Install the licence and the notice with the files:
-
-```bash
-_models_tag=v1.0.0
-_models_url=https://github.com/<owner>/omarchy-onnx-models/releases/download/$_models_tag
-source=(
-    "$_models_url/selfie_segmentation_landscape.onnx"
-    "$_models_url/pp_humansegv2_mobile_192x192.onnx"
-    "$_models_url/pp_humansegv2_lite_192x192.onnx"
-    "$_models_url/modnet_photographic.onnx"
-    "$_models_url/LICENSE-Apache-2.0"
-    "$_models_url/NOTICE"
-)
-sha256sums=(
-    'fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d'
-    '2bca11ec1f2a662146147d97523d613f5ef4ebf2a89803a95a0cbabfe2bd70a9'
-    'ca96b4436f1ce6a76059e8902e20a9617f6829fb11f6c6c9e876563e6352e6b4'
-    '07c308cf0fc7e6e8b2065a12ed7fc07e1de8febb7dc7839d7b7f15dd66584df9'
-    '<sha256 of LICENSE-Apache-2.0 from SHA256SUMS>'
-    '<sha256 of NOTICE from SHA256SUMS>'
-)
-
-package() {
-    install -Dm644 -t "$pkgdir/usr/share/<package>/models" ./*.onnx
-    install -Dm644 -t "$pkgdir/usr/share/licenses/$pkgname" LICENSE-Apache-2.0 NOTICE
-}
-```
-
-`makepkg` downloads each file and refuses any whose checksum differs. To bring a PKGBUILD to a new tag, change the tag and copy the lines of the new `SHA256SUMS`. Several sources with one file name (two models' `NOTICE`, for instance) need distinct names: `"<name>::<url>"`.
+The Arch packages of this repository are a consumer of the release, and the reference for one: [`packaging/arch/PKGBUILD`](../packaging/arch/PKGBUILD) lists each release file in `source=()`, with its SHA-256 from the release's `SHA256SUMS` in `sha256sums=()`, in the same order. It also lists the licence and the notice of each model, by URL from the release tag, with their own checksums. Several sources can share a file name (the `NOTICE` of two models, for instance), so each source is given a distinct name: `"<name>::<url>"`. `makepkg` downloads each file and refuses any whose checksum differs. To bring the PKGBUILD to a new tag, see [section 3](#3-update-the-arch-packages).
