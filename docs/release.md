@@ -1,17 +1,42 @@
 # Making a release
 
-The model files are published as the assets of a GitHub release of this repository. Releases are made by hand, by a maintainer; no workflow uploads anything.
+A maintainer publishes the model files as the assets of a GitHub release, by hand: no workflow uploads anything. This guide takes you from a clean checkout to a published release and updated Arch and AUR packages. You do not need it to install or use the models (see [INSTALL.md](../INSTALL.md)).
+
+## Before you start
+
+- A clean checkout of the commit to release.
+- The tools for a rebuild: see [INSTALL.md](../INSTALL.md#rebuild-the-files-optional).
+- The GitHub CLI (`gh`), or the GitHub web interface.
+- For step 4, an AUR account with your SSH key registered, and `makepkg`.
+
+The steps are: [1. Build and check](#1-build-and-check), [2. Tag and publish](#2-tag-and-publish), [3. Update the Arch packages](#3-update-the-arch-packages), [4. Publish to the AUR](#4-publish-to-the-aur).
 
 ## Tags and versions
 
 - Tags are `v<MAJOR>.<MINOR>.<PATCH>`; the first release is `v1.0.0`.
-- **The assets of a published tag are never replaced.** Consumers pin each file's SHA-256, so a changed file under an existing URL breaks every one of them. Whenever any release file changes (a model, `NOTICE`, the licence text, `MANIFEST.toml`), publish a new tag.
-- `MAJOR`: a file is removed or renamed, or a model's inputs or outputs change. `MINOR`: a model is added. `PATCH`: anything else that changes a file's bytes (a re-conversion with other tool versions, a corrected notice or manifest).
+- **Never replace the assets of a published tag.** Consumers pin each file's SHA-256, so a changed file under an existing URL breaks every one of them. When any release file changes (a model, `NOTICE`, the licence text, `MANIFEST.toml`), publish a new tag.
+- `MAJOR`: a file is removed or renamed, or a model's inputs or outputs change.
+- `MINOR`: a model is added.
+- `PATCH`: anything else that changes a file's bytes, such as a re-conversion with other tool versions or a corrected notice or manifest.
 - The checksums in `models.toml`, `README.md`, `docs/models.md` and `packaging/arch/PKGBUILD` describe the files of the latest release; `scripts/test.sh` checks that they agree with each other.
+
+## What the tests check
+
+`scripts/test.sh` runs without network and without the conversion environments. It needs shellcheck, from `PATH`, from `SHELLCHECK=/path/to/shellcheck`, or run as `uvx --from shellcheck-py shellcheck` when `uvx` is installed. It checks:
+
+- shellcheck and `bash -n` over every shell script and hook;
+- the model table's consistency: every field, the checksums, the licence files, and the tables in `README.md` and `docs/models.md`;
+- the Arch recipe against the model table and the licence files (`scripts/tests/pkgbuild-test.sh`): the ids, the file names, the SHA-256 of the model files, and the SHA-256 of the licence and notice files as they are at the tag of its `pkgver` when that tag is present locally;
+- the checksum, manifest and download functions of the build, against small fake files;
+- the reference-file handling of the build, with a fake `uv` that stops it before any environment;
+- whole builds with a fake `uv` and fake interpreters: the uv options, a checksum mismatch or a wrong `--input-dir` file leaving `dist/` untouched, the `--dist` marker and `--keep-venvs`;
+- the lock files against `requirements/*.txt`;
+- the equivalence check, against fake summaries;
+- the guard's own tests, and the guard over the whole tree.
 
 ## 1. Build and check
 
-From a clean checkout of the commit to release (the manifest records the commit; a tree with uncommitted changes or untracked files, ignored files aside, is recorded as `<commit>-modified`):
+From a clean checkout of the commit to release. The manifest records the commit. A tree with uncommitted changes or untracked files, ignored files aside, is recorded as `<commit>-modified`.
 
 ```bash
 git status --short                 # nothing at all: no change, no untracked file
@@ -24,7 +49,7 @@ scripts/build-models.sh --reference-dir ../references
 grep '^source_revision' dist/MANIFEST.toml; git rev-parse HEAD
 ```
 
-Before publishing, check that `source_revision` in `dist/MANIFEST.toml` is exactly the commit to release, `git rev-parse HEAD`: 40 hex digits, without `-modified` and not `unknown`. Otherwise the files were not built from that commit; commit or remove what `git status` shows and build again.
+Before you publish, check that `source_revision` in `dist/MANIFEST.toml` is exactly the commit to release, `git rev-parse HEAD`: 40 hex digits, without `-modified` and not `unknown`. If it is not, the files were not built from that commit. Commit or remove what `git status` shows and build again.
 
 The reference download is the published MediaPipe file, which the build ships after checking it (see [Reproducibility](#reproducibility)). For the first release, the reference is the evaluation's conversion whose SHA-256 is in `models.toml`; pass its directory the same way.
 
@@ -129,7 +154,7 @@ Once the release is published, bring `packaging/arch/PKGBUILD` to its tag. The p
     ```
 
 4. Run `scripts/test.sh`. Its PKGBUILD test checks the sums against `models.toml` and the licence and notice sums against the tag, which must be present locally (section 2 creates it). Without the tag the test checks them against the working tree and says so.
-5. Build once with `makepkg` from `packaging/arch`. It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
+5. Build once with `makepkg` from `packaging/arch` (see [INSTALL.md](../INSTALL.md#build-the-packages-from-a-clone)). It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
 
 ## 4. Publish to the AUR
 

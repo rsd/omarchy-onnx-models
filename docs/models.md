@@ -1,8 +1,8 @@
 # The models
 
-Four person-segmentation models, each under the Apache License, Version 2.0. For each: where it comes from, the evidence for its licence, what is known about its training data, how the ONNX file is made, and how to feed it. The same facts, in machine-readable form, are in [`models.toml`](../models.toml) and in each release's `MANIFEST.toml`.
+This page describes the four person-segmentation models, each under the Apache License, Version 2.0. For each model it gives where it comes from, the evidence for its licence, what is known about its training data, how the ONNX file is made and how to feed it. Read it before you rely on a model: the training-data terms of PP-HumanSeg and MODNet are not confirmed.
 
-Licence texts and notices: [`licenses/<id>/LICENSE`](../licenses) and [`licenses/<id>/NOTICE`](../licenses), collected in [`NOTICE`](../NOTICE). This page reports what the upstream projects publish; it is not legal advice.
+The same facts, in machine-readable form, are in [`models.toml`](../models.toml) and in each release's `MANIFEST.toml`. The licence texts and notices are in [`licenses/<id>/LICENSE`](../licenses) and [`licenses/<id>/NOTICE`](../licenses), collected in [`NOTICE`](../NOTICE). This page reports what the upstream projects publish; it is not legal advice.
 
 ## Summary
 
@@ -31,9 +31,16 @@ Licence texts and notices: [`licenses/<id>/LICENSE`](../licenses) and [`licenses
 | Model card | <https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Selfie%20Segmentation.pdf> |
 | Training data | Described in the model card (Google's own data set); no further terms stated |
 
-**Conversion (a modified file, Apache-2.0 §4(b)).** `tf2onnx` converts the TensorFlow Lite file at opset 17 (the file's `HardSwish` operators need opset 14 or newer) but leaves MediaPipe's custom operator `Convolution2DTransposeBias` as an unknown node. [`convert/fix_tconv.py`](../convert/fix_tconv.py) replaces each such node with standard ONNX nodes (NHWC to NCHW `Transpose`, a `ConvTranspose` with stride 2 and the same weights and bias, back to NHWC) and runs `onnx.checker`. The weights are unchanged. The result keeps the TFLite layout (NHWC); it gives the same matte as the community conversion `onnx-community/mediapipe_selfie_segmentation_landscape` (NCHW), within 4e-5.
+**Conversion (a modified file, Apache-2.0 §4(b)).** `tf2onnx` converts the TensorFlow Lite file at opset 17. The file's `HardSwish` operators need opset 14 or newer. `tf2onnx` leaves MediaPipe's custom operator `Convolution2DTransposeBias` as an unknown node. [`convert/fix_tconv.py`](../convert/fix_tconv.py) replaces each such node with standard ONNX nodes (NHWC to NCHW `Transpose`, a `ConvTranspose` with stride 2 and the same weights and bias, back to NHWC) and runs `onnx.checker`. The weights are unchanged. The result keeps the TFLite layout (NHWC). It gives the same matte as the community conversion `onnx-community/mediapipe_selfie_segmentation_landscape` (NCHW), within 4e-5.
 
-**Reproducibility.** This conversion is not byte-reproducible: `tf2onnx` names its folded constants differently on every run, and sometimes keeps one more `Reshape` to the same shape, while the weights, the operators and the outputs stay the same. The release file is therefore a reference conversion, SHA-256 `fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d`, made by this recipe; every build checks it against that checksum, converts the original afresh and proves the two equivalent (the same initializers, exactly; the same operators, no-op `Reshape`s aside; the same inputs, outputs and opsets; outputs within 1e-6 on eight deterministic inputs) before it ships the reference. The details are in [`docs/release.md`](release.md#reproducibility); each release's `MANIFEST.toml` records the result. The other three files are byte-reproducible.
+**Reproducibility.** This conversion is not byte-reproducible. `tf2onnx` names its folded constants differently on every run, and sometimes keeps one more `Reshape` to the same shape. The weights, the operators and the outputs stay the same. The release file is therefore a reference conversion, SHA-256 `fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d`, made by this recipe. Every build checks the reference against that checksum and converts the original afresh. It proves the two equivalent before it ships the reference:
+
+- the same initializers, exactly;
+- the same operators, no-op `Reshape`s aside;
+- the same inputs, outputs and opsets;
+- outputs within 1e-6 on eight deterministic inputs.
+
+The details are in [`docs/release.md`](release.md#reproducibility). Each release's `MANIFEST.toml` records the result. The other three files are byte-reproducible.
 
 **Preprocessing.** RGB, values in `[0, 1]` (`v / 255`), NHWC, the frame resized to 144x256 (height x width). The output is the person's alpha.
 
@@ -48,7 +55,7 @@ Licence texts and notices: [`licenses/<id>/LICENSE`](../licenses) and [`licenses
 | Model card | The PP-HumanSeg README: <https://github.com/PaddlePaddle/PaddleSeg/blob/release/2.9/contrib/PP-HumanSeg/README.md> |
 | Training data | **UNCONFIRMED.** The models are trained on PP-HumanSeg14K among other data. PP-HumanSeg14K is available only on request from Baidu (`paddleseg@baidu.com`), and no licence for it is stated publicly. Whether its terms reach the weights has not been confirmed |
 
-**Conversion (modified files, Apache-2.0 §4(b)).** The Paddle inference models have a dynamic input shape. [`convert/pp_static.py`](../convert/pp_static.py) re-saves each with the input fixed at `1x3x192x192`, which `paddle2onnx` needs to export the pooling with a fixed kernel; then `paddle2onnx` exports it at opset 13 (for `lite`, `paddle2onnx` raises the opset to 14 itself, which its `hard_swish` operator needs). When the export still holds an `AveragePool` whose kernel is `[-1, -1]` (an adaptive pooling it could not resolve), [`convert/pp_fix_pool.py`](../convert/pp_fix_pool.py) sets its kernel and stride from the fixed shape. The build detects this per file and records it in the run log and in `MANIFEST.toml` (`conversion_steps`); with the pinned versions neither file needs it, because the static input shape already lets `paddle2onnx` resolve the pooling. The weights are unchanged.
+**Conversion (modified files, Apache-2.0 §4(b)).** The Paddle inference models have a dynamic input shape. [`convert/pp_static.py`](../convert/pp_static.py) re-saves each with the input fixed at `1x3x192x192`. `paddle2onnx` needs this to export the pooling with a fixed kernel. Then `paddle2onnx` exports the model at opset 13. For `lite`, `paddle2onnx` raises the opset to 14 itself, which its `hard_swish` operator needs. When the export still holds an `AveragePool` whose kernel is `[-1, -1]` (an adaptive pooling it could not resolve), [`convert/pp_fix_pool.py`](../convert/pp_fix_pool.py) sets its kernel and stride from the fixed shape. The build detects this per file and records it in the run log and in `MANIFEST.toml` (`conversion_steps`). With the pinned versions neither file needs it, because the static input shape already lets `paddle2onnx` resolve the pooling. The weights are unchanged.
 
 **Preprocessing.** RGB, `(v / 255 - 0.5) / 0.5` (values in `[-1, 1]`), NCHW, the frame squashed to 192x192 (the aspect ratio is not kept). The output is a softmax over background (channel 0) and person (channel 1); the matte is channel 1. The file declares the output's height and width as dynamic; with the static input they are 192.
 
