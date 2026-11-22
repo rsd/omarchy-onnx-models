@@ -5,7 +5,7 @@ A maintainer publishes the model files as the assets of a GitHub release, by han
 ## Before you start
 
 - A clean checkout of the commit to release.
-- The tools for a rebuild: see [INSTALL.md](../INSTALL.md#rebuild-the-files-optional).
+- The tools for a rebuild: see [maintainers.md](maintainers.md#rebuild-the-files).
 - The GitHub CLI (`gh`), or the GitHub web interface.
 - For step 4, an AUR account with your SSH key registered, and `makepkg`.
 
@@ -22,7 +22,19 @@ The steps are: [1. Build and check](#1-build-and-check), [2. Tag and publish](#2
 
 ## What the tests check
 
-`scripts/test.sh` runs without network and without the conversion environments. It needs shellcheck, from `PATH`, from `SHELLCHECK=/path/to/shellcheck`, or run as `uvx --from shellcheck-py shellcheck` when `uvx` is installed. It checks:
+`scripts/test.sh` runs without network and without the conversion environments. It needs shellcheck: on `PATH`, at the path in `SHELLCHECK`, or fetched with `uvx` when `uvx` is installed. To name the program yourself:
+
+```bash
+SHELLCHECK=/path/to/shellcheck scripts/test.sh
+```
+
+Without shellcheck on `PATH` and without `SHELLCHECK`, the script runs this command when `uvx` is installed:
+
+```bash
+uvx --from shellcheck-py shellcheck
+```
+
+The tests check:
 
 - shellcheck and `bash -n` over every shell script and hook;
 - the model table's consistency: every field, the checksums, the licence files, and the tables in `README.md` and `docs/models.md`;
@@ -97,12 +109,25 @@ The build makes every release file from its upstream original, with every tool p
 1. checks its SHA-256 against `models.toml` before anything else; a mismatch stops the build;
 2. converts the original afresh, by the same pinned recipe;
 3. checks both files (`convert/verify_model.py`: `onnx.checker`, the opset against `opset` in `models.toml`, the input and output names and shapes, a smoke inference) and summarises each (`--summary`);
-4. compares the two summaries (`scripts/lib/equivalence.py`). They must have the same IR version; the same opset imports; the same graph inputs and outputs (names, types, shapes); the same initializer tensors as a multiset, compared exactly (type, shape and the SHA-256 of the values; names are not compared); and the same multiset of nodes (domain, operator and attributes), leaving out only no-op nodes: a `Reshape` whose data input and output have the same fully static shape and type after ONNX shape inference, which returns its input unchanged. Their outputs on eight deterministic inputs (the smoke input, two synthetic head-and-shoulders pictures that make the model return a full-range matte, two ramps and three constants), run on the CPU with one thread, must be finite and differ by at most the tolerance: 1e-6 for MediaPipe. The outputs lie in `[0, 1]`, where 1e-6 is about eight float32 steps at 1.0: it allows a different summation order and nothing else, while a changed weight or operator moves them by orders of magnitude more;
+4. compares the two summaries (`scripts/lib/equivalence.py`). They must have:
+    - the same IR version;
+    - the same opset imports;
+    - the same graph inputs and outputs (names, types, shapes);
+    - the same initializer tensors as a multiset, compared exactly (type, shape and the SHA-256 of the values; names are not compared);
+    - the same multiset of nodes (domain, operator and attributes), leaving out only no-op nodes: a `Reshape` whose data input and output have the same fully static shape and type after ONNX shape inference, which returns its input unchanged.
+
+    Their outputs on eight deterministic inputs must also be finite and differ by at most the tolerance, 1e-6 for MediaPipe. The eight inputs are the smoke input, two synthetic head-and-shoulders pictures that make the model return a full-range matte, two ramps and three constants. They run on the CPU with one thread. The outputs lie in `[0, 1]`, where 1e-6 is about eight float32 steps at 1.0: it allows a different summation order and nothing else, while a changed weight or operator moves them by orders of magnitude more;
 5. writes the reference file, not the fresh one, to `dist/`. `MANIFEST.toml` records, for that file, `provenance = "reference conversion, verified equivalent"` and a `[file.equivalence]` table: the fresh file's SHA-256 and size, the counts compared, the no-op rule and how many nodes it left out on each side, the probes, the largest difference and the tolerance.
 
 Without `--reference-dir` (or without the file in it) the build stops before any work and says so. With `--accept-new-checksums` and no reference it builds the fresh file instead, reports its SHA-256 as a mismatch and writes it to `dist/`; it never rewrites `models.toml`. Such a file is not the published one: release it only as a deliberate change (a new checksum in `models.toml`, the docs and a new tag).
 
-**Where the reference comes from.** For a rebuild, the reference is the asset of the latest published release (`https://github.com/<owner>/omarchy-onnx-models/releases/download/<tag>/selfie_segmentation_landscape.onnx`, or `gh release download` as above), whose SHA-256 is the one `models.toml` pins. A release never replaces a published asset: a rebuild of an unchanged recipe ships the same reference bytes, and a changed MediaPipe file is a new checksum and a new tag, never a new file under an old one.
+**Where the reference comes from.** For a rebuild, the reference is the asset of the latest published release, whose SHA-256 is the one `models.toml` pins. Download it from the release's asset URL ([Download URLs](#download-urls)), or with the GitHub CLI:
+
+```bash
+gh release download <tag> --repo <owner>/omarchy-onnx-models --pattern selfie_segmentation_landscape.onnx --dir <dir>
+```
+
+A release never replaces a published asset: a rebuild of an unchanged recipe ships the same reference bytes, and a changed MediaPipe file is a new checksum and a new tag, never a new file under an old one.
 
 ## 2. Tag and publish
 
@@ -153,7 +178,12 @@ Once the release is published, bring `packaging/arch/PKGBUILD` to its tag. The p
     done
     ```
 
-4. Run `scripts/test.sh`. Its PKGBUILD test checks the sums against `models.toml` and the licence and notice sums against the tag, which must be present locally (section 2 creates it). Without the tag the test checks them against the working tree and says so.
+4. Run the tests. The PKGBUILD test checks the sums against `models.toml` and the licence and notice sums against the tag, which must be present locally (section 2 creates it). Without the tag the test checks them against the working tree and says so.
+
+    ```bash
+    scripts/test.sh
+    ```
+
 5. Build once with `makepkg` from `packaging/arch` (see [INSTALL.md](../INSTALL.md#build-the-packages-from-a-clone)). It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
 
 ## 4. Publish to the AUR
@@ -178,7 +208,12 @@ git commit -m 'Initial release: 1.0.0-1'              # later: '1.1.0-1'
 git push -u origin master
 ```
 
-`--aur` refuses a directory that is not the top of a git work tree and one that holds files other than `.git`, `PKGBUILD`, `.SRCINFO` and `LICENSE`. Optionally run `namcap PKGBUILD` and `namcap *.pkg.tar.zst` on a build made in a temporary copy first.
+`--aur` refuses a directory that is not the top of a git work tree and one that holds files other than `.git`, `PKGBUILD`, `.SRCINFO` and `LICENSE`. Optionally run `namcap` on a build made in a temporary copy first:
+
+```bash
+namcap PKGBUILD
+namcap *.pkg.tar.zst
+```
 
 ## Download URLs
 
