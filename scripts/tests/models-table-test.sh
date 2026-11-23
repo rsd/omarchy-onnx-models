@@ -4,8 +4,9 @@
 #
 # Tests of the model table (models.toml) and its reader scripts/lib/models.py:
 # the repository's own table must be consistent with the licence files, the
-# NOTICE, README.md and docs/models.md; and the checks must catch each kind
-# of defect, on altered copies of the repository's files under mktemp.
+# NOTICE and docs/models.md, with no stray checksum in README.md; and the
+# checks must catch each kind of defect, on altered copies of the
+# repository's files under mktemp.
 # System python3 (3.11 or newer), standard library only, no network.
 # Usage: scripts/tests/models-table-test.sh. Exits non-zero on any failure.
 set -euo pipefail
@@ -25,7 +26,7 @@ py() { python3 -I "$models_py" "$@"; }
 
 echo "== the repository's table"
 if out=$(py --models "$top/models.toml" check --repo "$top" 2>&1); then
-    ok "models.toml is consistent with licenses/, NOTICE, README.md and docs/models.md"
+    ok "models.toml is consistent with licenses/, NOTICE and docs/models.md"
 else
     fail "models.toml check: $out"
 fi
@@ -232,17 +233,12 @@ expect_bad "a conversion naming another opset" models.toml \
 expect_bad "a NOTICE naming another opset" licenses/pphumanseg-v2-lite/NOTICE \
     's.replace("asked for opset\n13, which exports at opset 14, the opset its hard_swish operator needs", "at opset 13", 1)' \
     "pphumanseg-v2-lite: licenses/pphumanseg-v2-lite/NOTICE mentions an opset but not opset 14"
-expect_bad "README.md listing another sha256" README.md \
-    's.replace("fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d", "fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43e")' \
-    "mediapipe-landscape: README.md does not list fa02222275c455638fa1190493b659d25ad31e86f1b6459f17bd501f02cbe43d"
 expect_bad "a stray checksum in README.md" README.md \
     's + "\nold: `0000000000000000000000000000000000000000000000000000000000000000`\n"' \
     "README.md: checksum 0000000000000000000000000000000000000000000000000000000000000000 is not in the model table"
 expect_bad "docs/models.md missing an input sha256" docs/models.md \
     's.replace("9d86bc9c86c282cc2e92eaa089b96e18d30776c6ca745be18e6251a4e2a00110", "(see the table)")' \
     "pphumanseg-v2-lite: docs/models.md does not list 9d86bc9c86c282cc2e92eaa089b96e18d30776c6ca745be18e6251a4e2a00110"
-expect_bad "README.md missing a size" README.md 's.replace("| 12205830 |", "| 12 MB |")' \
-    "pphumanseg-v2-lite: README.md does not list 12205830"
 expect_bad "a NOTICE missing a model's notice" NOTICE 's.replace("MODNet: Trimap-Free", "MODNet, trimap-free")' \
     "modnet: NOTICE does not hold licenses/modnet/NOTICE"
 

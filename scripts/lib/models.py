@@ -17,9 +17,9 @@ Standard library only (Python 3.11 or newer, for tomllib); run it with
       ids and file names, a licences/<id>/LICENSE and NOTICE per model, the
       NOTICE at the top holding each model's notice, the conversion field
       and the model's NOTICE naming the model's opset when they name one,
-      README.md and
-      docs/models.md listing the same file names and checksums, and no
-      checksum in them or in docs/release.md that the table does not hold
+      docs/models.md listing each model's file name and checksums, and no
+      checksum in README.md, docs/models.md or docs/release.md that the
+      table does not hold
   models.py [--models FILE] manifest DIST FACTS
       writes DIST/MANIFEST.toml for the model files present in DIST, from
       the table and the build facts in FACTS (lines of KEY<TAB>VALUE)
@@ -223,7 +223,7 @@ def cmd_check(models, repo):
         return errors
 
     notice_all = read_text(os.path.join(repo, "NOTICE"), errors)
-    readme = read_text(os.path.join(repo, "README.md"), errors)
+    readme = read_text(os.path.join(repo, "README.md"), errors)  # only scanned for stray checksums
     doc = read_text(os.path.join(repo, "docs", "models.md"), errors)
     release = read_text(os.path.join(repo, "docs", "release.md"), errors) if os.path.exists(
         os.path.join(repo, "docs", "release.md")) else None
@@ -244,18 +244,11 @@ def cmd_check(models, repo):
                 errors.append(f"{mid}: NOTICE does not hold licenses/{mid}/NOTICE")
             if not mentions_opset(" ".join(notice.split()), m["opset"]):
                 errors.append(f"{mid}: licenses/{mid}/NOTICE mentions an opset but not opset {m['opset']}")
-        if readme is not None:
-            for value in (m["file"], m["sha256"], str(m["size"]), m["licence"]):
-                if value not in readme:
-                    errors.append(f"{mid}: README.md does not list {value}")
-            row = [line for line in readme.splitlines() if m["file"] in line and m["sha256"] in line]
-            if not row:
-                errors.append(f"{mid}: README.md has no table row with both the file name and its sha256")
         if doc is not None:
             for value in (m["file"], m["sha256"], m["input_sha256"]):
                 if value not in doc:
                     errors.append(f"{mid}: docs/models.md does not list {value}")
-    # No stray checksum: every 64-hex string in the README or docs/models.md is one of the table's.
+    # No stray checksum: every 64-hex string in README.md, docs/models.md or docs/release.md is one of the table's.
     known = {m["sha256"] for m in models} | {m["input_sha256"] for m in models}
     for name, text in (("README.md", readme), ("docs/models.md", doc), ("docs/release.md", release)):
         if text is None:

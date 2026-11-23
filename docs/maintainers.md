@@ -1,18 +1,18 @@
 # Maintaining the repository
 
-This page is for people who change the recipe, rebuild the files or prepare a release. You do not need it to install or use the models (see [INSTALL.md](../INSTALL.md)). The release procedure is in [release.md](release.md).
+This page is for people who change the recipe, rebuild the files or prepare a release. You do not need it to install or use the models (see [the README](../README.md#install)). The release procedure is in [release.md](release.md).
 
 ## Repository layout
 
 ```
-README.md, INSTALL.md, NOTICE
+README.md, NOTICE
 LICENSE-MIT, LICENSE-APACHE       the licence of this repository's own content
 models.toml                       the model table: the single source of truth
 requirements/                     the pinned environments: tflite.txt, paddle.txt, verify.txt,
                                   and their hashed lock files <name>.lock
 convert/                          the conversion and verification programs (Python)
 licenses/<id>/                    LICENSE and NOTICE of each model
-packaging/arch/                   the Arch packages: one split PKGBUILD (see INSTALL.md)
+packaging/arch/                   the Arch packages: one split PKGBUILD (see below)
 scripts/build-models.sh           the build: downloads, converts, verifies, writes dist/
 scripts/lock-requirements.sh      regenerates requirements/*.lock (docs/release.md)
 scripts/lib/                      the shell and Python functions the build and the tests share
@@ -52,6 +52,28 @@ scripts/check-no-models.sh --all
 ```
 
 Model files are built into `dist/` and uploaded to a release by hand ([release.md](release.md)).
+
+## The Arch packages
+
+All four packages come from one AUR base, `omarchy-onnx-models`, and are architecture independent (`arch=('any')`). [`packaging/arch/PKGBUILD`](../packaging/arch/PKGBUILD) is one split recipe for the four packages.
+
+- Each package installs its model into `/usr/share/omarchy-onnx-models/`, and its `LICENSE` and `NOTICE` into `/usr/share/licenses/<package>/`.
+- The sources are the release's model files and the licence and notice files of the release tag, each pinned by SHA-256. Nothing is taken from a checkout.
+- `pkgver` is the release tag without its `v`: `1.0.0` builds from `v1.0.0`. The packages follow each release (step 3 of [release.md](release.md#3-update-the-arch-packages)).
+- [`scripts/srcinfo.sh`](../scripts/srcinfo.sh) prepares the AUR recipe from this one.
+
+### Build the packages from a clone
+
+`makepkg` needs the release `v<pkgver>` to be published.
+
+```bash
+git clone https://github.com/rsd/omarchy-onnx-models.git
+cd omarchy-onnx-models/packaging/arch
+makepkg                                                  # downloads and checks the sources
+sudo pacman -U omarchy-onnx-model-modnet-*.pkg.tar.zst   # one package, or several
+```
+
+The downloads and the packages stay in `packaging/arch/`, which its `.gitignore` excludes from git.
 
 ## Rebuild the files
 

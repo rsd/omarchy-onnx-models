@@ -1,6 +1,6 @@
 # Making a release
 
-A maintainer publishes the model files as the assets of a GitHub release, by hand: no workflow uploads anything. This guide takes you from a clean checkout to a published release and updated Arch and AUR packages. You do not need it to install or use the models (see [INSTALL.md](../INSTALL.md)).
+A maintainer publishes the model files as the assets of a GitHub release, by hand: no workflow uploads anything. This guide takes you from a clean checkout to a published release and updated Arch and AUR packages. You do not need it to install or use the models (see [the README](../README.md#install)).
 
 ## Before you start
 
@@ -18,7 +18,7 @@ The steps are: [1. Build and check](#1-build-and-check), [2. Tag and publish](#2
 - `MAJOR`: a file is removed or renamed, or a model's inputs or outputs change.
 - `MINOR`: a model is added.
 - `PATCH`: anything else that changes a file's bytes, such as a re-conversion with other tool versions or a corrected notice or manifest.
-- The checksums in `models.toml`, `README.md`, `docs/models.md` and `packaging/arch/PKGBUILD` describe the files of the latest release; `scripts/test.sh` checks that they agree with each other.
+- The checksums in `models.toml`, `docs/models.md` and `packaging/arch/PKGBUILD` describe the files of the latest release; `scripts/test.sh` checks that they agree with each other.
 
 ## What the tests check
 
@@ -37,7 +37,7 @@ uvx --from shellcheck-py shellcheck
 The tests check:
 
 - shellcheck and `bash -n` over every shell script and hook;
-- the model table's consistency: every field, the checksums, the licence files, and the tables in `README.md` and `docs/models.md`;
+- the model table's consistency: every field, the checksums, the licence files, and the table in `docs/models.md`;
 - the Arch recipe against the model table and the licence files (`scripts/tests/pkgbuild-test.sh`): the ids, the file names, the SHA-256 of the model files, and the SHA-256 of the licence and notice files as they are at the tag of its `pkgver` when that tag is present locally;
 - the checksum, manifest and download functions of the build, against small fake files;
 - the reference-file handling of the build, with a fake `uv` that stops it before any environment;
@@ -65,7 +65,7 @@ Before you publish, check that `source_revision` in `dist/MANIFEST.toml` is exac
 
 The reference download is the published MediaPipe file, which the build ships after checking it (see [Reproducibility](#reproducibility)). For the first release, the reference is the evaluation's conversion whose SHA-256 is in `models.toml`; pass its directory the same way.
 
-`scripts/build-models.sh` fails, and leaves `dist/` as it was, when a release file's SHA-256 differs from `models.toml`, when a reference file is missing or is not the pinned file, and when a fresh conversion is not equivalent to its reference. Do not release such a build: find the cause first (`build/build-models.log`; the tool versions in `requirements/`). If the new file is intended, update `models.toml`, `README.md` and `docs/models.md` in a commit of their own, then build again and release under a new tag.
+`scripts/build-models.sh` fails, and leaves `dist/` as it was, when a release file's SHA-256 differs from `models.toml`, when a reference file is missing or is not the pinned file, and when a fresh conversion is not equivalent to its reference. Do not release such a build: find the cause first (`build/build-models.log`; the tool versions in `requirements/`). If the new file is intended, update `models.toml` and `docs/models.md` (and the size in `README.md` if its rounded value changes) in a commit of their own, then build again and release under a new tag.
 
 **Slow upstream host.** `paddleseg.bj.bcebos.com`, the host of the PP-HumanSeg originals, has served them at a few KB/s (about 6 KB/s, for 39 MB of archives). When it does, download the two archives once, by any means, into a directory of their upstream file names, and pass it with `--input-dir <dir>`: the build still checks each one against the `input_sha256` of `models.toml` before using it, and records a local copy in `MANIFEST.toml` as `a local copy (--input-dir), SHA-256 checked`, without its path. Files missing from the directory are downloaded as usual.
 
@@ -184,7 +184,7 @@ Once the release is published, bring `packaging/arch/PKGBUILD` to its tag. The p
     scripts/test.sh
     ```
 
-5. Build once with `makepkg` from `packaging/arch` (see [INSTALL.md](../INSTALL.md#build-the-packages-from-a-clone)). It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
+5. Build once with `makepkg` from `packaging/arch` (see [maintainers.md](maintainers.md#build-the-packages-from-a-clone)). It downloads every source and refuses any whose checksum differs from the PKGBUILD's.
 
 ## 4. Publish to the AUR
 

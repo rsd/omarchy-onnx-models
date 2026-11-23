@@ -265,7 +265,7 @@ case $mode in
 esac
 
 if ((failures > 0)); then
-    echo "This repository holds the recipe only; model files, archives and binaries must never be committed (README, \"Keeping models out of the history\")." >&2
+    echo "This repository holds the recipe only; model files, archives and binaries must never be committed (docs/maintainers.md, \"Keep models out of the history\")." >&2
     exit 1
 fi
 echo "ok: no model, archive or binary files ($mode)"
