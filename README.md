@@ -4,18 +4,20 @@ Four open person-segmentation models as ONNX files, as Arch packages and as plai
 
 These are the model files. To run them on your hardware, see [omarchy-onnxruntime](https://github.com/rsd/omarchy-onnxruntime).
 
-If you installed the omarchy-broadcast ONNX module on Arch or Omarchy, you already have its model. Nothing to do.
+If you installed the omarchy-broadcast ONNX module on Arch or Omarchy, you already have the first model below. Install another only to switch to it.
 
 ## Models
 
-| Package | Size | Who it is for |
-|---|---|---|
-| `omarchy-onnx-model-mediapipe-landscape` | 0.4 MB | Start here. omarchy-broadcast uses it unless you choose another, and its ONNX module installs it for you. The smallest and lightest. |
-| `omarchy-onnx-model-pphumanseg-v2-lite` | 12 MB | You want a second option that is still light. |
-| `omarchy-onnx-model-pphumanseg-v2-mobile` | 30 MB | The larger PP-HumanSeg variant. Upstream reports it as more accurate than lite, for more compute. |
-| `omarchy-onnx-model-modnet` | 26 MB | A matting model: soft edges around hair and fine detail instead of a hard mask. The heaviest to run. |
+All four do the same job: they take a camera frame and return a mask of the person, so a program can blur or replace the background. They differ in how fine the mask is and in what it costs to run.
 
-The packages install, in order, `selfie_segmentation_landscape.onnx`, `pp_humansegv2_lite_192x192.onnx`, `pp_humansegv2_mobile_192x192.onnx` and `modnet_photographic.onnx`.
+| Package | What it is for | Size |
+|---|---|---|
+| `omarchy-onnx-model-mediapipe-landscape` | **Fast.** Google's MediaPipe Selfie Segmentation, with a 256×144 mask. omarchy-broadcast uses this one out of the box. | 0.4 MB |
+| `omarchy-onnx-model-pphumanseg-v2-lite` | **Lite.** The small variant of Baidu's PP-HumanSeg v2, with a 192×192 mask. | 12 MB |
+| `omarchy-onnx-model-pphumanseg-v2-mobile` | **Quality.** The large variant of PP-HumanSeg v2, with a 192×192 mask. Upstream scores it 93.1% against 92.5% for lite (mIoU, a measure of mask accuracy). | 30 MB |
+| `omarchy-onnx-model-modnet` | **Sharp hair, on a GPU.** MODNet portrait matting: edges are partly transparent instead of cut hard, on a 512×288 mask for a 16:9 camera. | 26 MB |
+
+The words in bold are the labels omarchy-broadcast shows for each model in its "Model" setting.
 
 ## Install
 
@@ -27,6 +29,8 @@ yay -S omarchy-onnx-model-modnet
 
 Use any package name from the table. Any one package downloads all four files (about 69 MB), because the four share one recipe.
 
+Installing a model does not switch to it. In omarchy-broadcast, pick it in the "Model" setting: see [Choose the model and the engine](https://github.com/rsd/omarchy-broadcast/blob/main/docs/setup/onnx.md#choose-the-model-and-the-engine).
+
 ### Any other distribution
 
 ```bash
@@ -37,7 +41,7 @@ curl -fLO "$base/selfie_segmentation_landscape.onnx" -O "$base/LICENSE-Apache-2.
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-That directory is where omarchy-broadcast looks for a per-user model; its [ONNX setup guide](https://github.com/rsd/omarchy-broadcast/blob/main/docs/setup/onnx.md) covers the rest. This downloads the model omarchy-broadcast uses unless you choose another; for another model, replace `selfie_segmentation_landscape.onnx` with its file name from the list above.
+This downloads the MediaPipe model into the directory where omarchy-broadcast looks for a per-user model. For another model, replace `selfie_segmentation_landscape.onnx` with `pp_humansegv2_lite_192x192.onnx`, `pp_humansegv2_mobile_192x192.onnx` or `modnet_photographic.onnx`. The rest is in omarchy-broadcast's [ONNX setup guide](https://github.com/rsd/omarchy-broadcast/blob/main/docs/setup/onnx.md).
 
 If a line says `FAILED`, download that file again. If it persists, [open an issue](https://github.com/rsd/omarchy-onnx-models/issues).
 
